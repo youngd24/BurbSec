@@ -51,6 +51,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <SPI.h>
+#include <Preferences.h>
 #include <Adafruit_PN532.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -81,7 +82,7 @@
 #define PN532_RESET (17)
 
 // various delay timers
-#define SETUP_READ_DELAY 300
+#define PN532_ACK_DELAY 100
 #define LOOP_READ_DELAY 250
 
 // OLED settings
@@ -108,7 +109,8 @@
 #define NW_LED    5
 #define GAL_LED   6
 
-
+// Prefs
+#define prefReadOnly FALSE
 
 
 // ============================================================================
@@ -127,6 +129,9 @@ Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_RGB + NEO_KHZ800);
 // 
 BlinkPixel blinkPixelA(strip, SOUTH_LED);      // a blink LED on a Neopixel strip using pixel 0
 BlinkPixel blinkPixelB(strip, NORTH_LED);      // a blink LED on a Neopixel strip using pixel 1
+
+// Data persistence using Preferences
+Preferences prefs;
 
 // ============================================================================
 // Global variables
@@ -253,7 +258,12 @@ void setup() {
     Serial.begin(115200);
     Serial.println("setup(): entering");
 
+    // Load prefs
+    prefs.begin("MeetupBadge", false);
+    prefs.end();
+
     // LED strip
+    Serial.println("setup(): Configure/start LED strip");
     strip.begin();
     strip.show();
     strip.setBrightness(50);
@@ -287,12 +297,14 @@ void setup() {
     display.println("= WAITING FOR CARD =");
     display.display();
 
+    // Configure input pullup resistors
     Serial.println("setup: setting BTN1/BTN2/PN532_IRQ to INPUT_PULLUP");
     pinMode(BTN1, INPUT_PULLUP);
     pinMode(BTN2, INPUT_PULLUP);
     pinMode(PN532_IRQ, INPUT_PULLUP);    
   
     // NFC
+    Serial.println("setup(): Setting up NFC reader");
     nfc.begin();
     uint32_t versiondata = nfc.getFirmwareVersion();
     if (! versiondata) {
@@ -308,18 +320,19 @@ void setup() {
     // configure board to read RFID tags
     Serial.println("setup(): calling nfc.SAMConfig");
     nfc.SAMConfig();
-    Serial.println("setup(): Waiting for an ISO14443A Card ...");
+    delay(PN532_ACK_DELAY);
 
     // Start looking for reads
-    Serial.println("setup(): nfc start passive detection");
+    // Most commands to the PN532 need a delay at the end to ensure completion
+    Serial.println("setup(): nfc set passive detection");
     nfc.startPassiveTargetIDDetection(PN532_MIFARE_ISO14443A);
-    Serial.print("setup(): setting delay => ");Serial.println(SETUP_READ_DELAY);
-    delay(SETUP_READ_DELAY);
+    delay(PN532_ACK_DELAY);
 
     // Register IRQ
     Serial.println("setup(): attaching nfc interrupt");
     attachInterrupt(digitalPinToInterrupt(PN532_IRQ), nfcInterruptHandler, FALLING);
 
+    Serial.println("setup(): Waiting for an ISO14443A Card ...");
     Serial.println("setup(): leaving");
 }
 
