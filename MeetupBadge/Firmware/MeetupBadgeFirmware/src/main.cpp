@@ -93,13 +93,13 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // ----------------------------------------------------------------------------
 // Global variables
 // ----------------------------------------------------------------------------
-uint8_t uid[]           = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
-uint8_t uidPlaying[]    = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the playing UID
+uint8_t uid[]              = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
+uint8_t uidPlaying[]       = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the playing UID
 uint8_t uidLength;                                  // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
-uint8_t success         = 0;
-uint32_t timeoutNfc     = 0;
+uint8_t nfcCardReadSuccess = 0;
+uint32_t timeoutNfc        = 0;
 
-bool interruptTriggered = false;
+bool nfcInterruptTriggered = false;
 bool readerDisabled     = false;
 
 int btn1State = HIGH;
@@ -110,12 +110,12 @@ int btn2State = HIGH;
 // ----------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------
-// NAME        : handleInterrupt
+// NAME        : nfcInterruptHandler
 // DESCRIPTION : NFC interrupt handler
 // ----------------------------------------------------------------------------
-void ICACHE_RAM_ATTR handleInterrupt() {
+void ICACHE_RAM_ATTR nfcInterruptHandler() {
     detachInterrupt(PN532_IRQ);
-    interruptTriggered = true;
+    nfcInterruptTriggered = true;
     readerDisabled = true;
 }
 
@@ -197,7 +197,7 @@ void processUid(uint8_t* uid, uint8_t uidLength) {
     if (lmUrl.length() == 0) {
         Serial.println("processUid(): length 0");
 
-        String url = String("/bzImane/uid/0x");
+        String url = String("/bzImage/uid/0x");
         for (uint8_t i = 0; i< uidLength; i++) {
             url += String(uid[i], HEX);
         }
@@ -219,20 +219,29 @@ void setup() {
     // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
     if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
         Serial.println(F("setup(): SSD1306 allocation failed"));
+
+        // TODO: blink LED's to indicate failure here
         for(;;); // Don't proceed, loop forever
     }
 
     // Show initial display buffer contents on the screen --
     // the library initializes this with an Adafruit splash screen.
+    // TODO: make this a BurbSec logo
     display.display();
     delay(2000); // Pause for 2 seconds
 
     // Clear the buffer
     display.clearDisplay();
+    display.setTextSize(1);               // Normal 1:1 pixel scale
+    display.setTextColor(SSD1306_WHITE);  // Draw white text
+    display.setCursor(0, 0);              // Start at top-left corner
+    display.println("= WAITING FOR CARD =");
+    display.display();
 
-    Serial.println("loop: setting BTN1/BTN2 to INPUT_PULLUP");
+    Serial.println("setup: setting BTN1/BTN2/PN532_IRQ to INPUT_PULLUP");
     pinMode(BTN1, INPUT_PULLUP);
     pinMode(BTN2, INPUT_PULLUP);
+    pinMode(PN532_IRQ, INPUT_PULLUP);    
   
     // NFC
     nfc.begin();
@@ -252,18 +261,15 @@ void setup() {
     nfc.SAMConfig();
     Serial.println("setup(): Waiting for an ISO14443A Card ...");
 
-    // Register IRQ
-    Serial.println("setup(): Setting pinMode on IRQ line");
-    pinMode(PN532_IRQ, INPUT_PULLUP);
-
     // Start looking for reads
     Serial.println("setup(): nfc start passive detection");
     nfc.startPassiveTargetIDDetection(PN532_MIFARE_ISO14443A);
     Serial.print("setup(): setting delay => ");Serial.println(SETUP_READ_DELAY);
     delay(SETUP_READ_DELAY);
 
-    Serial.println("setup(): attaching interrupt");
-    attachInterrupt(digitalPinToInterrupt(PN532_IRQ), handleInterrupt, FALLING);
+    // Register IRQ
+    Serial.println("setup(): attaching nfc interrupt");
+    attachInterrupt(digitalPinToInterrupt(PN532_IRQ), nfcInterruptHandler, FALLING);
 
     Serial.println("setup(): leaving");
 }
@@ -277,26 +283,42 @@ void loop() {
     // 'uid' will be populated with the UID, and uidLength will indicate
     // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
 
-    //Serial.println("loop(): entering");
-
+    // read button 1
+    // TODO: replace with interrupt?
     btn1State = digitalRead(BTN1);
     if (btn1State == LOW) {
-      Serial.println("loop(): BTN1 pressed");
+        Serial.println("loop(): BTN1 pressed");
+        display.clearDisplay();
+        display.setCursor(0, 0);
+        display.println("BUTTON 1");
+        display.display();
     }
 
+    // read button 2
+    // TODO: replace with interrupt?
     btn2State = digitalRead(BTN2);
     if (btn2State == LOW) {
-      Serial.println("loop(): BTN2 pressed");
+        Serial.println("loop(): BTN2 pressed");
+        display.clearDisplay();
+        display.setCursor(0, 0);       
+        display.println("BUTTON 2");
+        display.display();
     }
 
-    if (interruptTriggered == true) {
-        //Serial.println("interrupt triggered");
-        success = nfc.readDetectedPassiveTargetID(uid, &uidLength);
-        interruptTriggered = false;
+    // Got an nfc passive (non-blocking) read interrupt
+    if (nfcInterruptTriggered == true) {
+
+        // Read the card and stash the results in uid
+        nfcCardReadSuccess = nfc.readDetectedPassiveTargetID(uid, &uidLength);
+
+        // reset the interrupt state indicating we're done reading the card
+        nfcInterruptTriggered = false;
     }
   
-    if (success) {
-        Serial.println("loop(): entering success");
+    // If the card was read successfully, try to do something with it
+    if (nfcCardReadSuccess) {
+        Serial.println("loop(): nfcCardReadSuccess entering");
+
         // Display some basic information about the card
         Serial.println("loop(): Found an ISO14443A card");
         Serial.print("loop():  UID Length: ");
@@ -332,25 +354,21 @@ void loop() {
         }
 
         // Rearm for next tag, 
-        success = 0;
+        nfcCardReadSuccess = 0;
     
   }
 
 
-
-  //if (readerDisabled == true) {
-    // Reactivate reader after timeout
+    // Tell the reader to go back into passive detection mode
+    // and reattach the intterupt handler
     readerDisabled = false;
     nfc.startPassiveTargetIDDetection(PN532_MIFARE_ISO14443A);
-    attachInterrupt(digitalPinToInterrupt(PN532_IRQ), handleInterrupt, FALLING);
+    attachInterrupt(digitalPinToInterrupt(PN532_IRQ), nfcInterruptHandler, FALLING);
 
     // reset button states on the way out of the loop
     btn1State = HIGH;
     btn2State = HIGH;
 
+    // spam loop
     delay(LOOP_READ_DELAY);
-
-    //Serial.println("loop(): leaving");
-  //}
-
 }
