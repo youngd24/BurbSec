@@ -4,6 +4,8 @@
 //
 // main.cpp
 //
+// Main entry file
+//
 // Darren Young [youngd24@gmail.com]
 //
 // ============================================================================
@@ -60,6 +62,8 @@
 #include <Noiasca_led.h>
 #include <utility/Noiasca_neopixel.h>
 
+#include "bitmaps.h"
+
 // ============================================================================
 // DEFINES
 // ============================================================================
@@ -103,6 +107,8 @@
 #define PRIME_LED 4
 #define NW_LED    5
 #define GAL_LED   6
+
+
 
 
 // ============================================================================
@@ -266,6 +272,10 @@ void setup() {
     // Show initial display buffer contents on the screen --
     // the library initializes this with an Adafruit splash screen.
     // TODO: make this a BurbSec logo
+    //display.clearDisplay();
+    delay(1000);
+    display.clearDisplay();
+    display.drawBitmap(0, 0, epd_bitmap_burbsec_interstate_shields, 128, 64, WHITE);
     display.display();
     delay(2000); // Pause for 2 seconds
 
