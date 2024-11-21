@@ -45,9 +45,12 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <SPI.h>
+#include <Adafruit_PN532.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
 // add-on/local includes
-#include "Adafruit_PN532.h"
+
 
 // ----------------------------------------------------------------------------
 // Defines
@@ -69,6 +72,12 @@
 #define SETUP_READ_DELAY 300
 #define LOOP_READ_DELAY 250
 
+// OLED settings
+#define SCREEN_WIDTH    128 // OLED display width, in pixels
+#define SCREEN_HEIGHT    64 // OLED display height, in pixels
+#define OLED_RESET       -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
+
 
 // ----------------------------------------------------------------------------
 // Object casts
@@ -76,6 +85,9 @@
 
 // Hardware SPI
 Adafruit_PN532 nfc(PN532_SS);
+
+// Display
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 
 // ----------------------------------------------------------------------------
@@ -204,6 +216,20 @@ void setup() {
     Serial.begin(115200);
     Serial.println("setup(): entering");
 
+    // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
+    if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
+        Serial.println(F("setup(): SSD1306 allocation failed"));
+        for(;;); // Don't proceed, loop forever
+    }
+
+    // Show initial display buffer contents on the screen --
+    // the library initializes this with an Adafruit splash screen.
+    display.display();
+    delay(2000); // Pause for 2 seconds
+
+    // Clear the buffer
+    display.clearDisplay();
+
     Serial.println("loop: setting BTN1/BTN2 to INPUT_PULLUP");
     pinMode(BTN1, INPUT_PULLUP);
     pinMode(BTN2, INPUT_PULLUP);
@@ -277,7 +303,24 @@ void loop() {
         Serial.print(uidLength, DEC);Serial.println(" bytes");
         Serial.print("loop():  UID Value: ");
         nfc.PrintHex(uid, uidLength);
-        
+
+        display.clearDisplay();
+        display.setTextSize(1);               // Normal 1:1 pixel scale
+        display.setTextColor(SSD1306_WHITE);  // Draw white text
+        display.setCursor(0, 0);              // Start at top-left corner
+
+        display.println("Card Detected");
+        display.print("Size of UID: "); display.print(uidLength, DEC);
+        display.println(" bytes");
+        display.print("UID: ");
+
+        for (uint8_t i = 0; i < uidLength; i++)
+        {
+            display.print(" 0x"); display.print(uid[i], HEX);
+        }
+            
+        display.display();
+    
         if (uidLength == 4) {
             // We probably have a Mifare Classic card ... 
             processUid(uid, 4);
