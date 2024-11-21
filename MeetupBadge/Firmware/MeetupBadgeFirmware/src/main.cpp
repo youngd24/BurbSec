@@ -7,6 +7,8 @@
 // Darren Young [youngd24@gmail.com]
 //
 // ============================================================================
+// LICENSE
+// ============================================================================
 //
 // BSD 3-Clause License
 //
@@ -37,24 +39,29 @@
 //
 // ============================================================================
 
-// ----------------------------------------------------------------------------
-// Includes
-// ----------------------------------------------------------------------------
+// ============================================================================
+// INCLUDES
+// ============================================================================
 
+// ----------------------------------------------------------------------------
 // Standard includes
+// ----------------------------------------------------------------------------
 #include <Arduino.h>
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_PN532.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <Adafruit_NeoPixel.h>
 
+// ----------------------------------------------------------------------------
 // add-on/local includes
+// ----------------------------------------------------------------------------
 
 
-// ----------------------------------------------------------------------------
-// Defines
-// ----------------------------------------------------------------------------
+// ============================================================================
+// DEFINES
+// ============================================================================
 
 // Input buttons
 #define BTN1 33
@@ -78,10 +85,28 @@
 #define OLED_RESET       -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 
+// WS2812 LED
+#define LED_PIN    27
+#define LED_COUNT  2
 
-// ----------------------------------------------------------------------------
+// LED colors
+#define LED_RED 0,255,0
+#define LED_GRN 255,0,0
+#define LED_BLU 0,0,255
+
+// LED assignments
+#define SOUTH_LED 0
+#define NORTH_LED 1
+#define EAST_LED  2
+#define WEST_LED  3
+#define PRIME_LED 4
+#define NW_LED    5
+#define GAL_LED   6
+
+
+// ============================================================================
 // Object casts
-// ----------------------------------------------------------------------------
+// ============================================================================
 
 // Hardware SPI
 Adafruit_PN532 nfc(PN532_SS);
@@ -89,25 +114,27 @@ Adafruit_PN532 nfc(PN532_SS);
 // Display
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
+// WS2812 LED strip
+Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_RGB + NEO_KHZ800);
 
-// ----------------------------------------------------------------------------
+
+// ============================================================================
 // Global variables
-// ----------------------------------------------------------------------------
+// ============================================================================
 uint8_t uid[]              = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the returned UID
-uint8_t uidPlaying[]       = { 0, 0, 0, 0, 0, 0, 0 };  // Buffer to store the playing UID
-uint8_t uidLength;                                  // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
+uint8_t uidLength;                                     // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
 uint8_t nfcCardReadSuccess = 0;
 uint32_t timeoutNfc        = 0;
 
 bool nfcInterruptTriggered = false;
-bool readerDisabled     = false;
+bool readerDisabled        = false;
 
-int btn1State = HIGH;
-int btn2State = HIGH;
+int btn1State              = HIGH;
+int btn2State              = HIGH;
 
-// ----------------------------------------------------------------------------
-// Local methods/functions
-// ----------------------------------------------------------------------------
+// ============================================================================
+// FUNCTIONS
+// ============================================================================
 
 // ----------------------------------------------------------------------------
 // NAME        : nfcInterruptHandler
@@ -216,6 +243,11 @@ void setup() {
     Serial.begin(115200);
     Serial.println("setup(): entering");
 
+    // LED strip
+    strip.begin();
+    strip.show();
+    strip.setBrightness(50);
+
     // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
     if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
         Serial.println(F("setup(): SSD1306 allocation failed"));
@@ -274,9 +306,9 @@ void setup() {
     Serial.println("setup(): leaving");
 }
 
-// ----------------------------------------------------------------------------
+// ============================================================================
 // Main loop
-// ----------------------------------------------------------------------------
+// ============================================================================
 void loop() {
 
     // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
@@ -304,6 +336,12 @@ void loop() {
         display.println("BUTTON 2");
         display.display();
     }
+
+    // Basic LED colors
+    strip.setPixelColor(SOUTH_LED, strip.Color(LED_RED));
+    strip.setPixelColor(NORTH_LED, strip.Color(LED_RED));
+    strip.show();
+
 
     // Got an nfc passive (non-blocking) read interrupt
     if (nfcInterruptTriggered == true) {
