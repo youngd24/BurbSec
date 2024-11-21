@@ -57,7 +57,8 @@
 // ----------------------------------------------------------------------------
 // add-on/local includes
 // ----------------------------------------------------------------------------
-
+#include <Noiasca_led.h>
+#include <utility/Noiasca_neopixel.h>
 
 // ============================================================================
 // DEFINES
@@ -117,6 +118,9 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // WS2812 LED strip
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_RGB + NEO_KHZ800);
 
+// 
+BlinkPixel blinkPixelA(strip, SOUTH_LED);      // a blink LED on a Neopixel strip using pixel 0
+BlinkPixel blinkPixelB(strip, NORTH_LED);      // a blink LED on a Neopixel strip using pixel 1
 
 // ============================================================================
 // Global variables
@@ -247,6 +251,9 @@ void setup() {
     strip.begin();
     strip.show();
     strip.setBrightness(50);
+    blinkPixelA.setOnInterval(250);      // set the on time of a pixel
+    blinkPixelB.setOffInterval(250);     // set the off time of a pixel
+    blinkPixelB.setOnColor(0xFF0000);    // set the on color of a pixel
 
     // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
     if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
@@ -338,9 +345,11 @@ void loop() {
     }
 
     // Basic LED colors
-    strip.setPixelColor(SOUTH_LED, strip.Color(LED_RED));
-    strip.setPixelColor(NORTH_LED, strip.Color(LED_RED));
-    strip.show();
+    //strip.setPixelColor(SOUTH_LED, strip.Color(LED_RED));
+    //strip.setPixelColor(NORTH_LED, strip.Color(LED_RED));
+    //strip.show();
+    blinkPixelA.update(); 
+    blinkPixelB.update();  
 
 
     // Got an nfc passive (non-blocking) read interrupt
