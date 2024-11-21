@@ -126,7 +126,7 @@ void ICACHE_RAM_ATTR handleInterrupt() {
 // ----------------------------------------------------------------------------
 void processUid(uint8_t* uid, uint8_t uidLength) {
     Serial.println("processUid(): entering");
-    String mp3Url;
+    String lmUrl;
 
     // Try to read NTAG2xx memory and extract an URL
     // TODO: mifare classic/ultralight
@@ -155,22 +155,22 @@ void processUid(uint8_t* uid, uint8_t uidLength) {
                 Serial.print("Header 6: ");
                 nfc.PrintHex(headerPage, 4);
                 Serial.println();
-                Serial.println("NDEF - Well know record");
+                Serial.println("NDEF - Well known record");
 
                 if (headerPage[2] == 0x55) {
-                Serial.println("NDEF - Well know URI");
+                Serial.println("NDEF - Well known URI");
                 switch(headerPage[3]) {
                     case 0x01:
-                    mp3Url = "http://www.";
+                    lmUrl = "http://www.";
                     break;
                     case 0x02:
-                    mp3Url = "https://www.";
+                    lmUrl = "https://www.";
                     break;
                     case 0x03:
-                    mp3Url = "http://";
+                    lmUrl = "http://";
                     break;
                     case 0x04:
-                    mp3Url = "https://";
+                    lmUrl = "https://";
                     break;
                     default:
                     Serial.print("NDEF - Value: '0x");
@@ -186,18 +186,18 @@ void processUid(uint8_t* uid, uint8_t uidLength) {
 
                 data[headerPage[1]-1] = '\0';
                 nfc.PrintHex(data, 12);
-                mp3Url += String((char *) data);
+                lmUrl += String((char *) data);
                 Serial.print("NDEF - URL: ");
-                Serial.println(mp3Url);
+                Serial.println(lmUrl);
                 }
             }
         }
     }
 
-    if (mp3Url.length() == 0) {
+    if (lmUrl.length() == 0) {
         Serial.println("processUid(): length 0");
 
-        String url = String("/nfcAudio/uid/0x");
+        String url = String("/bzImane/uid/0x");
         for (uint8_t i = 0; i< uidLength; i++) {
             url += String(uid[i], HEX);
         }
@@ -318,7 +318,7 @@ void loop() {
         {
             display.print(" 0x"); display.print(uid[i], HEX);
         }
-            
+
         display.display();
     
         if (uidLength == 4) {
