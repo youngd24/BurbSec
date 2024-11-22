@@ -110,7 +110,7 @@
 #define GAL_LED   6
 
 // Prefs
-#define prefReadOnly FALSE
+#define PREF_READONLY false
 
 
 // ============================================================================
@@ -259,7 +259,7 @@ void setup() {
     Serial.println("setup(): entering");
 
     // Load prefs
-    prefs.begin("MeetupBadge", false);
+    prefs.begin("MeetupBadge", PREF_READONLY);
     prefs.end();
 
     // LED strip
@@ -298,7 +298,7 @@ void setup() {
     display.display();
 
     // Configure input pullup resistors
-    Serial.println("setup: setting BTN1/BTN2/PN532_IRQ to INPUT_PULLUP");
+    Serial.println("setup(): setting BTN1/BTN2/PN532_IRQ to INPUT_PULLUP");
     pinMode(BTN1, INPUT_PULLUP);
     pinMode(BTN2, INPUT_PULLUP);
     pinMode(PN532_IRQ, INPUT_PULLUP);    
@@ -391,41 +391,54 @@ void loop() {
 
         // Display some basic information about the card
         Serial.println("loop(): Found an ISO14443A card");
-        Serial.print("loop():  UID Length: ");
+        Serial.print("loop():  => UID Length: ");
         Serial.print(uidLength, DEC);Serial.println(" bytes");
-        Serial.print("loop():  UID Value: ");
+        Serial.print("loop():  => UID Value: ");
         nfc.PrintHex(uid, uidLength);
 
+        // Display setup
+        // TODO: move this to a function
+        // TODO: perhaps we don't have to do this every time?
         display.clearDisplay();
         display.setTextSize(1);               // Normal 1:1 pixel scale
         display.setTextColor(SSD1306_WHITE);  // Draw white text
         display.setCursor(0, 0);              // Start at top-left corner
 
-        display.println("Card Detected");
-        display.print("Size of UID: "); display.print(uidLength, DEC);
+        // Display card info on OLED
+        display.println(" ** Card Detected **");
+        display.println("---------------------");
+        
+        display.println("UID length: ");
+        display.print(uidLength, DEC);
         display.println(" bytes");
-        display.print("UID: ");
+        display.println();
+    
+        display.println("UID bytes: ");
 
+        // Print each uid byte seen to the display
         for (uint8_t i = 0; i < uidLength; i++)
         {
             display.print(" 0x"); display.print(uid[i], HEX);
         }
 
+        // Render the display buffer
         display.display();
     
+        // These are most of the cards I have
         if (uidLength == 4) {
             // We probably have a Mifare Classic card ... 
             processUid(uid, 4);
         }
         
+        // Deal with these types later
         if (uidLength == 7) {
             // We probably have a Mifare Ultralight card or NTAG ...
-            processUid(uid, 7);
+            Serial.println("loop(): unsupported card detected");
+            // processUid(uid, 7);
         }
 
         // Rearm for next tag, 
         nfcCardReadSuccess = 0;
-    
   }
 
 
