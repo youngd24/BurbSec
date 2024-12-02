@@ -93,21 +93,21 @@
 
 // WS2812 LED
 #define LED_PIN    27
-#define LED_COUNT  2
+#define LED_COUNT  7
 
 // LED colors
-#define LED_RED 0,255,0
-#define LED_GRN 255,0,0
-#define LED_BLU 0,0,255
+#define LED_RED 0x00FF00
+#define LED_GRN 0xFF0000
+#define LED_BLU 0x0000FF
 
 // LED assignments
 #define SOUTH_LED 0
-#define NORTH_LED 1
-#define EAST_LED  2
-#define WEST_LED  3
-#define PRIME_LED 4
-#define NW_LED    5
-#define GAL_LED   6
+#define WEST_LED  1
+#define NW_LED    2
+#define PRIME_LED 3
+#define NORTH_LED 4
+#define GAL_LED   5
+#define EAST_LED  6
 
 // Prefs
 #define PREF_READONLY false
@@ -127,8 +127,15 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_RGB + NEO_KHZ800);
 
 // 
-BlinkPixel blinkPixelA(strip, SOUTH_LED);      // a blink LED on a Neopixel strip using pixel 0
-BlinkPixel blinkPixelB(strip, NORTH_LED);      // a blink LED on a Neopixel strip using pixel 1
+BlinkPixel blinkPixelSouth(strip, SOUTH_LED);  // a blink LED on a Neopixel strip using pixel 0
+BlinkPixel blinkPixelNorth(strip, NORTH_LED);  // a blink LED on a Neopixel strip using pixel 1
+BlinkPixel blinkPixelEast(strip, EAST_LED);    // a blink LED on a Neopixel strip using pixel 2
+BlinkPixel blinkPixelWest(strip, WEST_LED);    // a blink LED on a Neopixel strip using pixel 3
+BlinkPixel blinkPixelPrime(strip, PRIME_LED);  // a blink LED on a Neopixel strip using pixel 4
+BlinkPixel blinkPixelNW(strip, NW_LED);        // a blink LED on a Neopixel strip using pixel 5
+BlinkPixel blinkPixelGal(strip, GAL_LED);      // a blink LED on a Neopixel strip using pixel 6
+
+
 
 // Data persistence using Preferences
 Preferences prefs;
@@ -267,9 +274,28 @@ void setup() {
     strip.begin();
     strip.show();
     strip.setBrightness(50);
-    blinkPixelA.setOnInterval(250);      // set the on time of a pixel
-    blinkPixelB.setOffInterval(250);     // set the off time of a pixel
-    blinkPixelB.setOnColor(0xFF0000);    // set the on color of a pixel
+    blinkPixelSouth.setOnInterval(250);      // set the on time of a pixel
+    blinkPixelSouth.setOnColor(LED_BLU);    // set the on color of a pixel
+    
+    blinkPixelEast.setOffInterval(250);     // set the off time of a pixel
+    blinkPixelEast.setOnColor(LED_RED);    // set the on color of a pixel
+    
+    blinkPixelGal.setOffInterval(250);     // set the off time of a pixel
+    blinkPixelGal.setOnColor(LED_BLU);    // set the on color of a pixel
+
+    blinkPixelNorth.setOffInterval(250);     // set the off time of a pixel
+    blinkPixelNorth.setOnColor(LED_GRN);    // set the on color of a pixel
+    
+    blinkPixelPrime.setOffInterval(250);     // set the off time of a pixel
+    blinkPixelPrime.setOnColor(LED_GRN);    // set the on color of a pixel    
+ 
+    blinkPixelNW.setOffInterval(250);     // set the off time of a pixel
+    blinkPixelNW.setOnColor(LED_BLU);    // set the on color of a pixel
+
+    blinkPixelWest.setOffInterval(250);     // set the off time of a pixel
+    blinkPixelWest.setOnColor(LED_RED);    // set the on color of a pixel
+
+
 
     // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
     if (!display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
@@ -309,6 +335,8 @@ void setup() {
     uint32_t versiondata = nfc.getFirmwareVersion();
     if (! versiondata) {
         Serial.print("setup(): Didn't find PN53x board");
+        display.println("* ERROR NO PN532 *");
+        display.display();
         while (1); // halt
     } else {
         // Got ok data, print it out!
@@ -371,9 +399,13 @@ void loop() {
     //strip.setPixelColor(SOUTH_LED, strip.Color(LED_RED));
     //strip.setPixelColor(NORTH_LED, strip.Color(LED_RED));
     //strip.show();
-    blinkPixelA.update(); 
-    blinkPixelB.update();  
-
+    blinkPixelSouth.update();
+    blinkPixelNorth.update();
+    blinkPixelWest.update();    
+    blinkPixelEast.update();
+    blinkPixelPrime.update();
+    blinkPixelNW.update();
+    blinkPixelGal.update();
 
     // Got an nfc passive (non-blocking) read interrupt
     if (nfcInterruptTriggered == true) {
